@@ -1,0 +1,568 @@
+/*
+SQLyog Community v13.3.1 (64 bit)
+MySQL - 10.4.32-MariaDB : Database - flower_shop
+*********************************************************************
+*/
+
+/*!40101 SET NAMES utf8 */;
+
+/*!40101 SET SQL_MODE=''*/;
+
+/*!40014 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0 */;
+/*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
+/*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
+/*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
+CREATE DATABASE /*!32312 IF NOT EXISTS*/`flower_shop` /*!40100 DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci */;
+
+USE `flower_shop`;
+
+/*Table structure for table `coupon_usage` */
+
+DROP TABLE IF EXISTS `coupon_usage`;
+
+CREATE TABLE `coupon_usage` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `coupon_id` int(11) NOT NULL,
+  `user_id` int(11) DEFAULT NULL,
+  `order_id` int(11) NOT NULL,
+  `discount_amount` decimal(10,2) NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_coupon` (`coupon_id`),
+  KEY `idx_user` (`user_id`),
+  KEY `idx_order` (`order_id`),
+  CONSTRAINT `coupon_usage_ibfk_1` FOREIGN KEY (`coupon_id`) REFERENCES `coupons` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `coupon_usage_ibfk_2` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `coupon_usage_ibfk_3` FOREIGN KEY (`order_id`) REFERENCES `orders` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+/*Data for the table `coupon_usage` */
+
+/*Table structure for table `coupons` */
+
+DROP TABLE IF EXISTS `coupons`;
+
+CREATE TABLE `coupons` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `code` varchar(50) NOT NULL,
+  `description` varchar(200) DEFAULT NULL,
+  `discount_type` enum('percentage','fixed_amount') NOT NULL,
+  `discount_value` decimal(10,2) NOT NULL,
+  `minimum_purchase` decimal(10,2) DEFAULT 0.00,
+  `maximum_discount` decimal(10,2) DEFAULT NULL COMMENT 'Max discount for percentage coupons',
+  `usage_limit` int(11) DEFAULT NULL COMMENT 'Total usage limit (NULL = unlimited)',
+  `usage_per_user` int(11) DEFAULT 1 COMMENT 'How many times each user can use',
+  `times_used` int(11) DEFAULT 0,
+  `valid_from` timestamp NOT NULL DEFAULT current_timestamp(),
+  `valid_until` timestamp NULL DEFAULT NULL,
+  `is_active` tinyint(1) DEFAULT 1,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `code` (`code`),
+  KEY `idx_code` (`code`),
+  KEY `idx_active` (`is_active`),
+  KEY `idx_valid` (`valid_from`,`valid_until`)
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+/*Data for the table `coupons` */
+
+insert  into `coupons`(`id`,`code`,`description`,`discount_type`,`discount_value`,`minimum_purchase`,`maximum_discount`,`usage_limit`,`usage_per_user`,`times_used`,`valid_from`,`valid_until`,`is_active`,`created_at`,`updated_at`) values 
+(1,'WELCOME10','Welcome discount - 10% off','percentage',10.00,500.00,NULL,NULL,1,0,'2026-02-25 13:00:09','2027-02-25 13:00:09',1,'2026-02-25 13:00:09','2026-02-25 13:00:09'),
+(2,'FREESHIP','Free shipping coupon','fixed_amount',50.00,300.00,NULL,NULL,1,0,'2026-02-25 13:00:09','2026-08-25 13:00:09',1,'2026-02-25 13:00:09','2026-02-25 13:00:09'),
+(3,'SUMMER50','Summer sale - ₱50 off','fixed_amount',50.00,200.00,NULL,100,1,0,'2026-02-25 13:00:09','2026-05-25 13:00:09',1,'2026-02-25 13:00:09','2026-02-25 13:00:09');
+
+/*Table structure for table `email_notifications` */
+
+DROP TABLE IF EXISTS `email_notifications`;
+
+CREATE TABLE `email_notifications` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `order_id` int(11) DEFAULT NULL,
+  `user_id` int(11) DEFAULT NULL,
+  `email_to` varchar(100) NOT NULL,
+  `email_subject` varchar(200) NOT NULL,
+  `email_body` text NOT NULL,
+  `email_type` enum('order_confirmation','order_status','registration','password_reset','promo') NOT NULL,
+  `status` enum('pending','sent','failed') DEFAULT 'pending',
+  `sent_at` timestamp NULL DEFAULT NULL,
+  `error_message` text DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_order` (`order_id`),
+  KEY `idx_user` (`user_id`),
+  KEY `idx_status` (`status`),
+  CONSTRAINT `email_notifications_ibfk_1` FOREIGN KEY (`order_id`) REFERENCES `orders` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `email_notifications_ibfk_2` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+/*Data for the table `email_notifications` */
+
+/*Table structure for table `email_settings` */
+
+DROP TABLE IF EXISTS `email_settings`;
+
+CREATE TABLE `email_settings` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `smtp_host` varchar(100) NOT NULL DEFAULT 'smtp.gmail.com',
+  `smtp_port` int(11) NOT NULL DEFAULT 587,
+  `smtp_user` varchar(100) NOT NULL,
+  `smtp_password` varchar(255) NOT NULL,
+  `from_email` varchar(100) NOT NULL,
+  `from_name` varchar(100) NOT NULL DEFAULT 'Bloom & Blossom',
+  `is_active` tinyint(1) DEFAULT 0,
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+/*Data for the table `email_settings` */
+
+insert  into `email_settings`(`id`,`smtp_host`,`smtp_port`,`smtp_user`,`smtp_password`,`from_email`,`from_name`,`is_active`,`updated_at`) values 
+(1,'smtp.gmail.com',587,'your-email@gmail.com','','noreply@bloomandblossom.com','Bloom & Blossom',0,'2026-02-25 13:00:06');
+
+/*Table structure for table `flowers` */
+
+DROP TABLE IF EXISTS `flowers`;
+
+CREATE TABLE `flowers` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `name` varchar(100) NOT NULL,
+  `color` varchar(50) NOT NULL,
+  `price` decimal(10,2) NOT NULL DEFAULT 0.00,
+  `stock_quantity` int(11) DEFAULT 100,
+  `image` varchar(255) DEFAULT NULL,
+  `status` enum('active','inactive') DEFAULT 'active',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_status` (`status`),
+  KEY `idx_name` (`name`)
+) ENGINE=InnoDB AUTO_INCREMENT=29 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+/*Data for the table `flowers` */
+
+insert  into `flowers`(`id`,`name`,`color`,`price`,`stock_quantity`,`image`,`status`,`created_at`,`updated_at`) values 
+(1,'Faux Lavender','Purple',99.00,100,'faux_lavender.jpg','active','2026-02-24 17:38:49','2026-04-04 01:00:16'),
+(2,'Gerbera Daisy','White',150.00,100,NULL,'active','2026-02-24 17:38:49','2026-02-25 12:27:58'),
+(3,'Gerbera Daisy','Pink',1.00,100,NULL,'active','2026-02-24 17:38:49','2026-03-24 21:49:34'),
+(4,'Tulip','Maroon',0.00,100,NULL,'active','2026-02-24 17:38:49','2026-02-24 17:38:49'),
+(5,'Jasmine','Pink Centered White',0.00,100,NULL,'active','2026-02-24 17:38:49','2026-02-24 17:38:49'),
+(6,'Lavender','Pink',0.00,100,NULL,'active','2026-02-24 17:38:49','2026-02-24 17:38:49'),
+(7,'Lily','Pink',0.00,100,NULL,'active','2026-02-24 17:38:49','2026-02-24 17:38:49'),
+(8,'Rose','Pink and White Bicolored',0.00,100,NULL,'active','2026-02-24 17:38:49','2026-02-24 17:38:49'),
+(9,'Lavender','Purple',0.00,100,NULL,'active','2026-02-24 17:38:49','2026-02-24 17:38:49'),
+(10,'Lily','Purple',0.00,100,NULL,'active','2026-02-24 17:38:49','2026-02-24 17:38:49'),
+(11,'Lily','Purple Stripped',0.00,100,NULL,'active','2026-02-24 17:38:49','2026-02-24 17:38:49'),
+(12,'Tulip','Purple',0.00,100,NULL,'active','2026-02-24 17:38:49','2026-02-24 17:38:49'),
+(13,'Ribbon Rose','Red',0.00,100,NULL,'active','2026-02-24 17:38:49','2026-02-24 17:38:49'),
+(14,'Ribbon Rose','Royal Blue',0.00,100,NULL,'active','2026-02-24 17:38:49','2026-02-24 17:38:49'),
+(15,'Ribbon Rose','Royal Light Black',0.00,100,NULL,'active','2026-02-24 17:38:49','2026-02-24 17:38:49'),
+(16,'Ribbon Rose','Royal Light Green',0.00,100,NULL,'active','2026-02-24 17:38:49','2026-02-24 17:38:49'),
+(17,'Ribbon Rose','Royal Pink',0.00,100,NULL,'active','2026-02-24 17:38:49','2026-02-24 17:38:49'),
+(18,'Ribbon Rose','Royal Purple',0.00,100,NULL,'active','2026-02-24 17:38:49','2026-02-24 17:38:49'),
+(19,'Ribbon Rose','Royal Red',0.00,100,NULL,'active','2026-02-24 17:38:49','2026-02-24 17:38:49'),
+(20,'Ribbon Rose','Royal Teal',0.00,100,NULL,'active','2026-02-24 17:38:49','2026-02-24 17:38:49'),
+(21,'Ribbon Rose','Royal White Satin',0.00,100,NULL,'active','2026-02-24 17:38:49','2026-02-24 17:38:49'),
+(22,'Ribbon Rose','Royal',0.00,100,NULL,'active','2026-02-24 17:38:49','2026-02-24 17:38:49'),
+(23,'Sunflower','Yellow',0.00,100,NULL,'active','2026-02-24 17:38:49','2026-02-24 17:38:49'),
+(24,'Triple Leaf Stem','Green',0.00,100,NULL,'active','2026-02-24 17:38:49','2026-02-24 17:38:49'),
+(25,'Tulip','Blue',0.00,100,NULL,'active','2026-02-24 17:38:49','2026-02-24 17:38:49'),
+(27,'santol','white',100.00,77,NULL,'active','2026-03-25 19:25:02','2026-03-25 19:25:02'),
+(28,'oooo','White',89.00,76,NULL,'active','2026-03-26 11:50:22','2026-03-26 11:50:22');
+
+/*Table structure for table `order_items` */
+
+DROP TABLE IF EXISTS `order_items`;
+
+CREATE TABLE `order_items` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `order_id` int(11) NOT NULL,
+  `product_type` enum('ready-made','custom') NOT NULL,
+  `product_id` int(11) DEFAULT NULL,
+  `product_name` varchar(255) DEFAULT NULL,
+  `custom_details` text DEFAULT NULL,
+  `quantity` int(11) NOT NULL DEFAULT 1,
+  `price` decimal(10,2) NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_order` (`order_id`),
+  KEY `idx_product` (`product_id`),
+  CONSTRAINT `order_items_ibfk_1` FOREIGN KEY (`order_id`) REFERENCES `orders` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `order_items_ibfk_2` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB AUTO_INCREMENT=191 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+/*Data for the table `order_items` */
+
+insert  into `order_items`(`id`,`order_id`,`product_type`,`product_id`,`product_name`,`custom_details`,`quantity`,`price`,`created_at`) values 
+(86,67,'ready-made',4,'Red Rose ',NULL,1,399.00,'2026-04-01 21:25:58'),
+(87,67,'ready-made',NULL,'Dragon Fruit',NULL,1,76.99,'2026-04-01 21:25:58'),
+(88,67,'custom',NULL,'Custom Bouquet','{\"flowers\":[{\"name\":\"Faux Lavender\",\"color\":\"Purple\",\"quantity\":\"2\",\"price\":\"699.00\"}],\"wrapper\":\"Light Green Wrapper\",\"message\":\"4343\"}',1,1398.00,'2026-04-01 21:25:58'),
+(89,72,'custom',NULL,'Custom Bouquet','{\"flowers\":[],\"wrapper\":\"\",\"message\":\"\"}',3,0.00,'2026-04-03 17:57:13'),
+(90,72,'custom',NULL,'Custom Bouquet','{\"flowers\":[],\"wrapper\":\"\",\"message\":\"\"}',1,0.00,'2026-04-03 17:57:13'),
+(91,73,'ready-made',4,'Red Rose ',NULL,1,399.00,'2026-04-03 18:56:54'),
+(92,73,'ready-made',NULL,'santol',NULL,1,99.00,'2026-04-03 18:56:54'),
+(93,73,'custom',NULL,'Custom Bouquet','{\"flowers\":[{\"name\":\"Faux Lavender\",\"color\":\"Purple\",\"quantity\":\"2\",\"price\":\"699.00\"}],\"wrapper\":\"Light Green Wrapper\",\"message\":\"\"}',1,1398.00,'2026-04-03 18:56:54'),
+(94,73,'custom',NULL,'Custom Bouquet','{\"flowers\":[{\"name\":\"Gerbera Daisy\",\"color\":\"Pink\",\"quantity\":\"6\",\"price\":\"1.00\"}],\"wrapper\":\"Pink Wrapper\",\"message\":\"\"}',1,6.00,'2026-04-03 18:56:54'),
+(95,74,'ready-made',NULL,'Indian Mangooo',NULL,1,99.00,'2026-04-04 01:38:00'),
+(96,74,'ready-made',NULL,'santol',NULL,1,99.00,'2026-04-04 01:38:00'),
+(97,75,'custom',NULL,'Custom Bouquet','{\"flowers\":[{\"name\":\"Faux Lavender\",\"color\":\"Purple\",\"quantity\":\"2\",\"price\":\"99.00\"}],\"wrapper\":\"Blue Wrapper\",\"message\":\"\"}',1,198.00,'2026-04-04 01:48:19'),
+(98,75,'ready-made',4,'Red Rose ',NULL,1,199.00,'2026-04-04 01:48:19'),
+(99,76,'ready-made',4,'Red Rose ',NULL,1,199.00,'2026-04-04 01:50:58'),
+(100,76,'ready-made',NULL,'Gumamela',NULL,1,199.00,'2026-04-04 01:50:58'),
+(101,77,'ready-made',4,'Red Rose ',NULL,1,199.00,'2026-04-04 01:54:33'),
+(102,78,'custom',NULL,'Custom Bouquet','{\"flowers\":[{\"name\":\"Gerbera Daisy\",\"color\":\"Pink\",\"quantity\":\"12\",\"price\":\"1.00\"}],\"wrapper\":\"Light Green Wrapper\",\"message\":\"\"}',1,12.00,'2026-04-04 03:14:35'),
+(103,78,'ready-made',4,'Red Rose ',NULL,1,399.00,'2026-04-04 03:14:35'),
+(104,78,'custom',NULL,'Custom Bouquet','{\"flowers\":[{\"name\":\"Faux Lavender\",\"color\":\"Purple\",\"quantity\":\"1\",\"price\":\"699.00\"}],\"wrapper\":\"Red Wrapper\",\"message\":\"\"}',1,699.00,'2026-04-04 03:14:35'),
+(105,79,'custom',NULL,'Custom Bouquet','{\"flowers\":[{\"name\":\"Gerbera Daisy\",\"color\":\"Pink\",\"quantity\":\"12\",\"price\":\"1.00\"}],\"wrapper\":\"Light Green Wrapper\",\"message\":\"\"}',1,12.00,'2026-04-04 03:17:56'),
+(106,79,'ready-made',4,'Red Rose ',NULL,1,399.00,'2026-04-04 03:17:56'),
+(107,79,'custom',NULL,'Custom Bouquet','{\"flowers\":[{\"name\":\"Faux Lavender\",\"color\":\"Purple\",\"quantity\":\"1\",\"price\":\"699.00\"}],\"wrapper\":\"Red Wrapper\",\"message\":\"\"}',1,699.00,'2026-04-04 03:17:56'),
+(108,80,'custom',NULL,'Custom Bouquet','{\"flowers\":[{\"name\":\"Gerbera Daisy\",\"color\":\"Pink\",\"quantity\":\"12\",\"price\":\"1.00\"}],\"wrapper\":\"Light Green Wrapper\",\"message\":\"\"}',1,12.00,'2026-04-04 03:20:23'),
+(109,80,'ready-made',4,'Red Rose ',NULL,1,399.00,'2026-04-04 03:20:23'),
+(110,80,'custom',NULL,'Custom Bouquet','{\"flowers\":[{\"name\":\"Faux Lavender\",\"color\":\"Purple\",\"quantity\":\"1\",\"price\":\"699.00\"}],\"wrapper\":\"Red Wrapper\",\"message\":\"\"}',1,699.00,'2026-04-04 03:20:23'),
+(111,81,'ready-made',NULL,'pako',NULL,1,22.00,'2026-04-04 03:22:18'),
+(112,81,'ready-made',4,'Red Rose ',NULL,1,199.00,'2026-04-04 03:22:18'),
+(113,81,'custom',NULL,'Custom Bouquet','{\"flowers\":[{\"name\":\"Faux Lavender\",\"color\":\"Purple\",\"quantity\":\"4\",\"price\":\"99.00\"}],\"wrapper\":\"Light Green Wrapper\",\"message\":\"\"}',1,396.00,'2026-04-04 03:22:18'),
+(182,113,'custom',NULL,'Custom Bouquet','{\"type\":\"custom\",\"name\":\"Custom Bouquet\",\"flowers\":[{\"name\":\"Gerbera Daisy\",\"color\":\"Pink\",\"quantity\":\"4\",\"price\":\"1.00\"}],\"wrapper\":\"Pink Wrapper\",\"message\":\"\",\"price\":4,\"quantity\":2}',2,4.00,'2026-04-17 14:27:36'),
+(183,113,'ready-made',NULL,'Midnight Blue Handcrafted Paper Bouquet',NULL,1,699.00,'2026-04-17 14:27:36'),
+(184,114,'ready-made',NULL,'Midnight Blue Handcrafted Paper Bouquet',NULL,1,699.00,'2026-04-17 14:29:06'),
+(185,115,'ready-made',NULL,'Midnight Blue Handcrafted Paper Bouquet',NULL,1,699.00,'2026-04-17 14:36:08'),
+(186,116,'ready-made',NULL,'Midnight Blue Handcrafted Paper Bouquet',NULL,3,699.00,'2026-04-17 14:59:11'),
+(187,117,'ready-made',4,'Red Rose ',NULL,1,799.00,'2026-04-17 15:58:43'),
+(188,118,'ready-made',10,'Sunset Peach Handcrafted Paper Bouquet',NULL,1,699.00,'2026-04-17 16:02:00'),
+(189,119,'custom',NULL,'Custom Bouquet','{\"type\":\"custom\",\"name\":\"Custom Bouquet\",\"flowers\":[{\"name\":\"Faux Lavender\",\"color\":\"Purple\",\"quantity\":\"1\",\"price\":\"99.00\"},{\"name\":\"Faux Lavender\",\"color\":\"Purple\",\"quantity\":\"1\",\"price\":\"99.00\"}],\"wrapper\":\"Pink Wrapper\",\"message\":\"\",\"price\":198,\"quantity\":1}',1,198.00,'2026-04-17 16:03:25'),
+(190,120,'ready-made',4,'Red Rose ',NULL,2,799.00,'2026-04-17 16:48:34');
+
+/*Table structure for table `order_tracking` */
+
+DROP TABLE IF EXISTS `order_tracking`;
+
+CREATE TABLE `order_tracking` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `order_id` int(11) NOT NULL,
+  `status` enum('pending','confirmed','preparing','out_for_delivery','delivered','cancelled') NOT NULL,
+  `location` varchar(200) DEFAULT NULL COMMENT 'Current location of order',
+  `notes` text DEFAULT NULL,
+  `created_by` int(11) DEFAULT NULL COMMENT 'Admin user who updated',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_order` (`order_id`),
+  CONSTRAINT `order_tracking_ibfk_1` FOREIGN KEY (`order_id`) REFERENCES `orders` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+/*Data for the table `order_tracking` */
+
+/*Table structure for table `orders` */
+
+DROP TABLE IF EXISTS `orders`;
+
+CREATE TABLE `orders` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `tracking_number` varchar(50) DEFAULT NULL,
+  `user_id` int(11) DEFAULT NULL,
+  `customer_name` varchar(100) NOT NULL,
+  `customer_email` varchar(100) DEFAULT NULL,
+  `customer_phone` varchar(20) NOT NULL,
+  `delivery_address` text NOT NULL,
+  `delivery_date` date NOT NULL,
+  `estimated_delivery` timestamp NULL DEFAULT NULL,
+  `total_price` decimal(10,2) NOT NULL,
+  `coupon_code` varchar(50) DEFAULT NULL,
+  `discount_amount` decimal(10,2) DEFAULT 0.00,
+  `final_price` decimal(10,2) GENERATED ALWAYS AS (`total_price` - `discount_amount`) STORED,
+  `status` enum('pending','confirmed','delivered','cancelled') DEFAULT 'pending',
+  `payment_method` varchar(50) DEFAULT 'Cash on Delivery',
+  `payment_status` enum('pending','paid','failed','refunded') DEFAULT 'pending',
+  `payment_reference` varchar(100) DEFAULT NULL,
+  `paid_at` timestamp NULL DEFAULT NULL,
+  `notes` text DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_user` (`user_id`),
+  KEY `idx_status` (`status`),
+  KEY `idx_user_id` (`user_id`),
+  CONSTRAINT `fk_user_orders` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `orders_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB AUTO_INCREMENT=121 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+/*Data for the table `orders` */
+
+insert  into `orders`(`id`,`tracking_number`,`user_id`,`customer_name`,`customer_email`,`customer_phone`,`delivery_address`,`delivery_date`,`estimated_delivery`,`total_price`,`coupon_code`,`discount_amount`,`status`,`payment_method`,`payment_status`,`payment_reference`,`paid_at`,`notes`,`created_at`,`updated_at`) values 
+(67,'BNB00000067',NULL,'jpaulDC','jpauldelacruz1129@gmail.com','09123456789','123321','2026-04-08',NULL,1873.99,NULL,0.00,'confirmed','GCash','failed','121212',NULL,'123321','2026-04-01 21:25:58','2026-04-01 21:37:57'),
+(68,'BNB00000068',9,'jerve raga','jerveraga11@gmail.com','12123','121313','2026-04-30',NULL,50.00,NULL,0.00,'confirmed','GCash','paid','123456',NULL,'1212','2026-04-03 17:40:31','2026-04-04 01:44:54'),
+(69,'BNB00000069',9,'jerve raga','jerveraga11@gmail.com','12123','121313','2026-04-30',NULL,50.00,NULL,0.00,'confirmed','GCash','paid','123456',NULL,'1212','2026-04-03 17:43:17','2026-04-04 01:28:11'),
+(70,'BNB00000070',9,'jerve raga','jerveraga11@gmail.com','12123','121313','2026-04-30',NULL,50.00,NULL,0.00,'confirmed','GCash','paid','123456',NULL,'1212','2026-04-03 17:43:42','2026-04-04 01:27:14'),
+(71,'BNB00000071',9,'jerve raga','jerveraga11@gmail.com','12123','121313','2026-04-30',NULL,50.00,NULL,0.00,'confirmed','GCash','failed','123456',NULL,'1212','2026-04-03 17:44:09','2026-04-04 01:27:09'),
+(72,'BNB00000072',9,'jerve raga','jerveraga11@gmail.com','097388587473','123','2026-04-06',NULL,50.00,NULL,0.00,'confirmed','GCash','paid','123333',NULL,'','2026-04-03 17:57:13','2026-04-04 01:26:45'),
+(73,'BNB00000073',9,'jerve raga','jerveraga11@gmail.com','097388587473','789987','2026-04-30',NULL,1902.00,NULL,0.00,'delivered','GCash','paid','453443','2026-04-03 19:00:44','','2026-04-03 18:56:53','2026-04-04 01:00:44'),
+(74,'BNB00000074',12,'jpaulDC','jpauldelacruz1129@gmail.com','09111111111','11111','2026-04-05',NULL,248.00,NULL,0.00,'confirmed','GCash','paid','11111',NULL,'11111','2026-04-04 01:38:00','2026-04-04 01:38:21'),
+(75,'BNB00000075',12,'jpaulDC','jpauldelacruz1129@gmail.com','09222222222','22222','2026-04-08',NULL,447.00,NULL,0.00,'confirmed','GCash','paid','22222',NULL,'22222','2026-04-04 01:48:19','2026-04-04 01:50:10'),
+(76,'BNB00000076',12,'jpaulDC','jpauldelacruz1129@gmail.com','33333','33333','2026-04-08',NULL,448.00,NULL,0.00,'confirmed','GCash','paid','33333',NULL,'33333','2026-04-04 01:50:58','2026-04-04 01:51:18'),
+(77,'BNB00000077',12,'jpaulDC','jpauldelacruz1129@gmail.com','77777','77777','2026-04-07',NULL,249.00,NULL,0.00,'pending','GCash','paid','77777',NULL,'77777','2026-04-04 01:54:33','2026-04-04 03:15:42'),
+(78,'BNB00000078',9,'jerve raga','jerveraga11@gmail.com','11111','11111','2026-04-06',NULL,1110.00,NULL,0.00,'pending','GCash','paid','11111',NULL,'11111','2026-04-04 03:14:35','2026-04-04 03:15:14'),
+(79,'BNB00000079',9,'jerve raga','jerveraga11@gmail.com','11111','11111','2026-04-09',NULL,1110.00,NULL,0.00,'pending','GCash','failed','11111',NULL,'11111','2026-04-04 03:17:56','2026-04-14 19:08:07'),
+(80,'BNB00000080',9,'jerve raga','jerveraga11@gmail.com','11111','11111','2026-04-20',NULL,1110.00,NULL,0.00,'pending','GCash','paid','11111',NULL,'11111','2026-04-04 03:20:23','2026-04-04 03:27:34'),
+(81,'BNB00000081',9,'jerve raga','jerveraga11@gmail.com','666','666','2026-04-06',NULL,667.00,NULL,0.00,'confirmed','GCash','paid','666',NULL,'666','2026-04-04 03:22:18','2026-04-04 11:13:50'),
+(113,'BNB00000113',12,'JP','jpauldelacruz1129@gmail.com','097388587473','121212','2026-04-25',NULL,757.00,NULL,0.00,'pending','GCash','pending','121212',NULL,'1212','2026-04-17 14:27:36','2026-04-17 14:27:36'),
+(114,'BNB00000114',12,'JPaul','jpauldelacruz1129@gmail.com','111','11','2026-04-19',NULL,749.00,NULL,0.00,'pending','GCash','pending','000',NULL,'1212','2026-04-17 14:29:06','2026-04-17 14:29:06'),
+(115,'BNB00000115',12,'JP','jpauldelacruz1129@gmail.com','121212','1212','2026-04-30',NULL,749.00,NULL,0.00,'pending','GCash','paid','1212','2026-04-17 09:22:39','1212','2026-04-17 14:36:08','2026-04-17 15:22:39'),
+(116,'BNB00000116',12,'JP','jpauldelacruz1129@gmail.com','777','777','2026-04-20',NULL,2097.00,NULL,0.00,'confirmed','GCash','paid','777',NULL,'777','2026-04-17 14:59:11','2026-04-17 14:59:35'),
+(117,'BNB00000117',12,'JP','jpauldelacruz1129@gmail.com','097388587473','2231','2026-04-19',NULL,849.00,NULL,0.00,'pending','GCash','pending','123132',NULL,'','2026-04-17 15:58:43','2026-04-17 15:58:43'),
+(118,'BNB00000118',12,'JP','jpauldelacruz1129@gmail.com','123123','132','2026-04-22',NULL,749.00,NULL,0.00,'confirmed','GCash','paid','3039 088 434532',NULL,'ds','2026-04-17 16:02:00','2026-04-17 16:53:44'),
+(119,'BNB00000119',12,'JP','jpauldelacruz1129@gmail.com','097388587473','12323','2026-04-24',NULL,248.00,NULL,0.00,'confirmed','GCash','paid','234',NULL,'2132','2026-04-17 16:03:25','2026-04-17 16:07:20'),
+(120,'BNB00000120',12,'JP','jpauldelacruz1129@gmail.com','097388587473','123','2026-04-19',NULL,1598.00,NULL,0.00,'confirmed','GCash','paid','123123',NULL,'w','2026-04-17 16:48:34','2026-04-17 16:52:53');
+
+/*Table structure for table `payment_methods` */
+
+DROP TABLE IF EXISTS `payment_methods`;
+
+CREATE TABLE `payment_methods` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `name` varchar(50) NOT NULL,
+  `type` enum('cod','paypal','gcash','bank_transfer','card') NOT NULL,
+  `is_active` tinyint(1) DEFAULT 1,
+  `api_key` varchar(255) DEFAULT NULL COMMENT 'For PayPal/GCash integration',
+  `api_secret` varchar(255) DEFAULT NULL COMMENT 'For PayPal/GCash integration',
+  `instructions` text DEFAULT NULL COMMENT 'Payment instructions for customers',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+/*Data for the table `payment_methods` */
+
+insert  into `payment_methods`(`id`,`name`,`type`,`is_active`,`api_key`,`api_secret`,`instructions`,`created_at`) values 
+(1,'Cash on Delivery','cod',1,NULL,NULL,'Pay when you receive your order.','2026-02-25 13:00:06'),
+(2,'GCash','gcash',1,'gcash_qr_1774368945.jpg','09123123123','','2026-02-25 13:00:06'),
+(3,'PayPal','paypal',0,NULL,NULL,'Pay securely with PayPal. Click the PayPal button at checkout.','2026-02-25 13:00:06'),
+(4,'Bank Transfer','bank_transfer',0,NULL,NULL,'BDO Account: 1234-5678-9012, Account Name: Bloom & Blossom','2026-02-25 13:00:06');
+
+/*Table structure for table `product_reviews` */
+
+DROP TABLE IF EXISTS `product_reviews`;
+
+CREATE TABLE `product_reviews` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `product_id` int(11) NOT NULL,
+  `user_id` int(11) DEFAULT NULL,
+  `order_id` int(11) DEFAULT NULL COMMENT 'Only customers who ordered can review',
+  `customer_name` varchar(100) NOT NULL,
+  `rating` int(11) NOT NULL CHECK (`rating` between 1 and 5),
+  `review_title` varchar(200) DEFAULT NULL,
+  `review_text` text DEFAULT NULL,
+  `is_verified` tinyint(1) DEFAULT 0 COMMENT '1 = verified purchase',
+  `is_approved` tinyint(1) DEFAULT 0 COMMENT 'Admin approval',
+  `admin_reply` text DEFAULT NULL,
+  `replied_at` timestamp NULL DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_product` (`product_id`),
+  KEY `idx_user` (`user_id`),
+  KEY `idx_approved` (`is_approved`),
+  KEY `idx_rating` (`rating`),
+  KEY `order_id` (`order_id`),
+  CONSTRAINT `product_reviews_ibfk_1` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `product_reviews_ibfk_2` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `product_reviews_ibfk_3` FOREIGN KEY (`order_id`) REFERENCES `orders` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+/*Data for the table `product_reviews` */
+
+/*Table structure for table `products` */
+
+DROP TABLE IF EXISTS `products`;
+
+CREATE TABLE `products` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `name` varchar(150) NOT NULL,
+  `description` text DEFAULT NULL,
+  `price` decimal(10,2) NOT NULL DEFAULT 0.00,
+  `average_rating` decimal(2,1) DEFAULT 0.0,
+  `total_reviews` int(11) DEFAULT 0,
+  `stock_quantity` int(11) DEFAULT 20,
+  `image` varchar(255) DEFAULT NULL,
+  `featured` tinyint(1) DEFAULT 0,
+  `status` enum('active','inactive') DEFAULT 'active',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_status` (`status`),
+  KEY `idx_featured` (`featured`)
+) ENGINE=InnoDB AUTO_INCREMENT=16 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+/*Data for the table `products` */
+
+insert  into `products`(`id`,`name`,`description`,`price`,`average_rating`,`total_reviews`,`stock_quantity`,`image`,`featured`,`status`,`created_at`,`updated_at`) values 
+(4,'Red Rose ','Handcrafted Paper Roses',799.00,0.0,0,20,'red_rosee.jpg',1,'active','2026-02-24 17:55:41','2026-04-17 12:53:22'),
+(10,'Sunset Peach Handcrafted Paper Bouquet','Crepe Paper Carnations & Roses\r\n',699.00,0.0,0,20,'orange_flower.jpg',1,'active','2026-03-26 11:29:15','2026-04-17 13:13:46'),
+(14,'Handcrafted Crochet Flowers','Direct & Professional',649.00,0.0,0,20,'hand_crafted.jpg',1,'active','2026-04-17 12:28:30','2026-04-17 12:37:32'),
+(15,'Midnight Blue Handcrafted Paper Bouquet','everlasting',699.00,0.0,0,20,'midnight_blue.jpg',0,'active','2026-04-17 16:30:56','2026-04-17 16:31:43');
+
+/*Table structure for table `saved_carts` */
+
+DROP TABLE IF EXISTS `saved_carts`;
+
+CREATE TABLE `saved_carts` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `user_id` int(11) NOT NULL,
+  `cart_data` text NOT NULL,
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `unique_user` (`user_id`),
+  CONSTRAINT `saved_carts_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+/*Data for the table `saved_carts` */
+
+/*Table structure for table `user_carts` */
+
+DROP TABLE IF EXISTS `user_carts`;
+
+CREATE TABLE `user_carts` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `user_id` int(11) NOT NULL,
+  `cart_data` text NOT NULL,
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `user_id` (`user_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=12 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+/*Data for the table `user_carts` */
+
+insert  into `user_carts`(`id`,`user_id`,`cart_data`,`updated_at`) values 
+(2,10,'{\"custom_1775208618\":{\"type\":\"custom\",\"flowers\":null,\"wrapper\":null,\"message\":null,\"price\":null,\"quantity\":1}}','2026-04-03 11:52:11'),
+(4,11,'[{\"type\":\"ready-made\",\"product_id\":\"4\",\"name\":\"Red Rose \",\"price\":399,\"quantity\":\"1\",\"image\":\"red_rose.jpg\"},{\"type\":\"custom\",\"name\":\"Custom Bouquet\",\"flowers\":[{\"name\":\"Gerbera Daisy\",\"color\":\"White\",\"quantity\":\"4\",\"price\":\"150.00\"}],\"wrapper\":\"Light Green Wrapper\",\"message\":\"\",\"price\":600,\"quantity\":1},{\"type\":\"ready-made\",\"product_id\":\"11\",\"name\":\"santol\",\"price\":99,\"quantity\":\"1\",\"image\":null},{\"type\":\"ready-made\",\"product_id\":\"11\",\"name\":\"santol\",\"price\":99,\"quantity\":\"1\",\"image\":null},{\"type\":\"ready-made\",\"product_id\":\"12\",\"name\":\"pako\",\"price\":22,\"quantity\":\"1\",\"image\":null},{\"type\":\"ready-made\",\"product_id\":\"10\",\"name\":\"Gerbera Daisy w\",\"price\":79.99,\"quantity\":\"1\",\"image\":null}]','2026-04-03 21:28:01'),
+(10,12,'[{\"type\":\"custom\",\"name\":\"Custom Bouquet\",\"flowers\":[{\"name\":\"Gerbera Daisy\",\"color\":\"Pink\",\"quantity\":\"4\",\"price\":\"1.00\"}],\"wrapper\":\"Pink Wrapper\",\"message\":\"\",\"price\":4,\"quantity\":5},{\"type\":\"ready-made\",\"product_id\":\"13\",\"name\":\"Midnight Blue Handcrafted Paper Bouquet\",\"price\":699,\"quantity\":\"1\",\"image\":\"midnight_blue.jpg\"}]','2026-04-17 10:49:42'),
+(11,9,'[{\"type\":\"ready-made\",\"product_id\":\"4\",\"name\":\"Red Rose \",\"price\":199,\"quantity\":\"1\",\"image\":\"red_rose.jpg\"}]','2026-04-15 02:37:57');
+
+/*Table structure for table `users` */
+
+DROP TABLE IF EXISTS `users`;
+
+CREATE TABLE `users` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `name` varchar(100) NOT NULL,
+  `email` varchar(100) NOT NULL,
+  `phone` varchar(20) DEFAULT NULL,
+  `address` text DEFAULT NULL,
+  `password` varchar(255) NOT NULL,
+  `remember_token` varchar(100) DEFAULT NULL,
+  `role` enum('admin','customer') DEFAULT 'customer',
+  `last_login` datetime DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `email` (`email`),
+  KEY `idx_email` (`email`),
+  KEY `idx_role` (`role`)
+) ENGINE=InnoDB AUTO_INCREMENT=14 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+/*Data for the table `users` */
+
+insert  into `users`(`id`,`name`,`email`,`phone`,`address`,`password`,`remember_token`,`role`,`last_login`,`created_at`,`updated_at`) values 
+(1,'Admin','byhappiest123@gmail.com',NULL,NULL,'0192023a7bbd73250516f069df18b500',NULL,'admin',NULL,'2026-02-24 17:38:49','2026-02-24 17:38:49'),
+(9,'jerve raga','jerveraga11@gmail.com',NULL,NULL,'$2y$10$ZTUNvNTvq1ia6Fv9Nl3WleLRgl1aLgn6AInhP8mCqi9AE5i9GpZ4e',NULL,'customer','2026-04-15 02:37:46','2026-04-03 10:50:19','2026-04-15 08:37:46'),
+(11,'maeven','maeven11@gmail.com',NULL,NULL,'$2y$10$uh9jXeVTPLN7sziofiRGguRhJ8EJlg8T7m42pEM99B3XBNnEeiiIy',NULL,'customer','2026-04-03 21:27:57','2026-04-03 12:05:33','2026-04-04 03:27:57'),
+(12,'jpaul','jpauldelacruz1129@gmail.com','09614047147','pakwan Street Tumana SMB 123','$2y$10$l6L94.TA2rTGOHNA51dCM.erSsr3USMnvsEsYwGBZFrfY6YjTauzO',NULL,'customer','2026-04-17 10:47:15','2026-04-03 12:55:39','2026-04-17 16:50:40'),
+(13,'john paul','johnpaul@gmail.com',NULL,NULL,'$2y$10$J0Cz9N3oGQr2VB3QXFfyYOcjSq87K5tmrdjdFFazng3mn/AYu2FqS',NULL,'customer','2026-04-14 14:53:30','2026-04-14 14:51:32','2026-04-14 20:53:30');
+
+/*Table structure for table `wrappers` */
+
+DROP TABLE IF EXISTS `wrappers`;
+
+CREATE TABLE `wrappers` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `name` varchar(100) NOT NULL,
+  `price` decimal(10,2) NOT NULL DEFAULT 0.00,
+  `stock_quantity` int(11) DEFAULT 50,
+  `image` varchar(255) DEFAULT NULL,
+  `status` enum('active','inactive') DEFAULT 'active',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_status` (`status`)
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+/*Data for the table `wrappers` */
+
+insert  into `wrappers`(`id`,`name`,`price`,`stock_quantity`,`image`,`status`,`created_at`,`updated_at`) values 
+(1,'Blue Wrapper',0.00,50,NULL,'active','2026-02-24 17:38:50','2026-02-24 17:38:50'),
+(2,'Red Wrapper',0.00,50,NULL,'active','2026-02-24 17:38:50','2026-02-24 17:38:50'),
+(3,'Pink Wrapper',0.00,50,NULL,'active','2026-02-24 17:38:50','2026-02-24 17:38:50'),
+(4,'Light Green Wrapper',0.00,50,NULL,'active','2026-02-24 17:38:50','2026-02-24 17:38:50');
+
+/*Table structure for table `active_coupons` */
+
+DROP TABLE IF EXISTS `active_coupons`;
+
+/*!50001 DROP VIEW IF EXISTS `active_coupons` */;
+/*!50001 DROP TABLE IF EXISTS `active_coupons` */;
+
+/*!50001 CREATE TABLE  `active_coupons`(
+ `code` varchar(50) ,
+ `description` varchar(200) ,
+ `discount_type` enum('percentage','fixed_amount') ,
+ `discount_value` decimal(10,2) ,
+ `times_used` int(11) ,
+ `usage_limit` int(11) ,
+ `valid_until` timestamp 
+)*/;
+
+/*Table structure for table `order_tracking_latest` */
+
+DROP TABLE IF EXISTS `order_tracking_latest`;
+
+/*!50001 DROP VIEW IF EXISTS `order_tracking_latest` */;
+/*!50001 DROP TABLE IF EXISTS `order_tracking_latest` */;
+
+/*!50001 CREATE TABLE  `order_tracking_latest`(
+ `order_id` int(11) ,
+ `tracking_number` varchar(50) ,
+ `customer_name` varchar(100) ,
+ `current_status` enum('pending','confirmed','preparing','out_for_delivery','delivered','cancelled') ,
+ `location` varchar(200) ,
+ `last_update` timestamp 
+)*/;
+
+/*Table structure for table `pending_reviews` */
+
+DROP TABLE IF EXISTS `pending_reviews`;
+
+/*!50001 DROP VIEW IF EXISTS `pending_reviews` */;
+/*!50001 DROP TABLE IF EXISTS `pending_reviews` */;
+
+/*!50001 CREATE TABLE  `pending_reviews`(
+ `id` int(11) ,
+ `product_id` int(11) ,
+ `product_name` varchar(150) ,
+ `customer_name` varchar(100) ,
+ `rating` int(11) ,
+ `review_text` text ,
+ `created_at` timestamp 
+)*/;
+
+/*View structure for view active_coupons */
+
+/*!50001 DROP TABLE IF EXISTS `active_coupons` */;
+/*!50001 DROP VIEW IF EXISTS `active_coupons` */;
+
+/*!50001 CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `active_coupons` AS select `c`.`code` AS `code`,`c`.`description` AS `description`,`c`.`discount_type` AS `discount_type`,`c`.`discount_value` AS `discount_value`,`c`.`times_used` AS `times_used`,`c`.`usage_limit` AS `usage_limit`,`c`.`valid_until` AS `valid_until` from `coupons` `c` where `c`.`is_active` = 1 and (`c`.`valid_until` is null or `c`.`valid_until` > current_timestamp()) and (`c`.`usage_limit` is null or `c`.`times_used` < `c`.`usage_limit`) */;
+
+/*View structure for view order_tracking_latest */
+
+/*!50001 DROP TABLE IF EXISTS `order_tracking_latest` */;
+/*!50001 DROP VIEW IF EXISTS `order_tracking_latest` */;
+
+/*!50001 CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `order_tracking_latest` AS select `o`.`id` AS `order_id`,`o`.`tracking_number` AS `tracking_number`,`o`.`customer_name` AS `customer_name`,`ot`.`status` AS `current_status`,`ot`.`location` AS `location`,`ot`.`created_at` AS `last_update` from (`orders` `o` left join `order_tracking` `ot` on(`o`.`id` = `ot`.`order_id`)) where `ot`.`id` = (select max(`order_tracking`.`id`) from `order_tracking` where `order_tracking`.`order_id` = `o`.`id`) */;
+
+/*View structure for view pending_reviews */
+
+/*!50001 DROP TABLE IF EXISTS `pending_reviews` */;
+/*!50001 DROP VIEW IF EXISTS `pending_reviews` */;
+
+/*!50001 CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `pending_reviews` AS select `pr`.`id` AS `id`,`pr`.`product_id` AS `product_id`,`p`.`name` AS `product_name`,`pr`.`customer_name` AS `customer_name`,`pr`.`rating` AS `rating`,`pr`.`review_text` AS `review_text`,`pr`.`created_at` AS `created_at` from (`product_reviews` `pr` join `products` `p` on(`pr`.`product_id` = `p`.`id`)) where `pr`.`is_approved` = 0 order by `pr`.`created_at` desc */;
+
+/*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
+/*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
+/*!40014 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS */;
+/*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
